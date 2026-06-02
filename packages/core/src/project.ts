@@ -2,11 +2,14 @@ export * as ProjectV2 from "./project"
 export * as Project from "./project"
 
 import { Context, Effect, Layer, Schema } from "effect"
+import { eq } from "drizzle-orm"
 import path from "path"
 import { AbsolutePath, withStatics } from "./schema"
+import { Database } from "./database/database"
 import { AppFileSystem } from "./filesystem"
 import { Git } from "./git"
 import { Hash } from "./util/hash"
+import { ProjectPathTable } from "./project/path.sql"
 
 export const ID = Schema.String.pipe(
   Schema.brand("Project.ID"),
@@ -28,7 +31,16 @@ export class Info extends Schema.Class<Info>("Project.Info")({
   id: ID,
 }) {}
 
+export const PathsInput = Schema.Struct({
+  projectID: ID,
+}).annotate({ identifier: "Project.PathsInput" })
+export type PathsInput = typeof PathsInput.Type
+
+export const Paths = Schema.Array(AbsolutePath).annotate({ identifier: "Project.Paths" })
+export type Paths = typeof Paths.Type
+
 export interface Interface {
+  readonly paths: (input: PathsInput) => Effect.Effect<Paths>
   readonly resolve: (input: AbsolutePath) => Effect.Effect<
     {
       previous?: ID
@@ -55,8 +67,19 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Pr
 export const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
+    const db = (yield* Database.Service).db
     const fs = yield* AppFileSystem.Service
     const git = yield* Git.Service
+
+    const paths = Effect.fn("Project.paths")(function* (input: PathsInput) {
+      const rows = yield* db
+        .select({ path: ProjectPathTable.path })
+        .from(ProjectPathTable)
+        .where(eq(ProjectPathTable.project_id, input.projectID))
+        .all()
+        .pipe(Effect.orDie)
+      return rows.toSorted((a, b) => a.path.localeCompare(b.path)).map((row) => AbsolutePath.make(row.path))
+    })
 
     const cached = Effect.fnUntraced(function* (dir: string) {
       return yield* fs.readFileString(path.join(dir, "opencode")).pipe(
@@ -109,7 +132,6 @@ export const layer = Layer.effect(
 
       const previous = yield* cached(repo.store)
       const id = (yield* remote(repo)) ?? previous ?? (yield* root(repo))
-
       return {
         previous,
         id: id ?? ID.global,
@@ -122,8 +144,12 @@ export const layer = Layer.effect(
       yield* fs.writeFileString(path.join(input.store, "opencode"), input.id).pipe(Effect.ignore)
     })
 
-    return Service.of({ resolve, commit })
+    return Service.of({ paths, resolve, commit })
   }),
 )
 
-export const defaultLayer = layer.pipe(Layer.provide(AppFileSystem.defaultLayer), Layer.provide(Git.defaultLayer))
+export const defaultLayer = layer.pipe(
+  Layer.provide(Database.defaultLayer),
+  Layer.provide(AppFileSystem.defaultLayer),
+  Layer.provide(Git.defaultLayer),
+)

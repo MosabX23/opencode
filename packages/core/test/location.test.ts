@@ -9,6 +9,7 @@ const ref = { directory: AbsolutePath.make("/repo/packages/app"), workspaceID: "
 const projectLayer = Layer.succeed(
   Project.Service,
   Project.Service.of({
+    paths: () => Effect.succeed([]),
     resolve: () =>
       Effect.succeed({
         id: Project.ID.make("project"),

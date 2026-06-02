@@ -63,6 +63,7 @@ export type Event =
   | EventMcpToolsChanged
   | EventMcpBrowserOpenFailed
   | EventCommandExecuted
+  | EventProjectPathsUpdated
   | EventProjectUpdated
   | EventVcsBranchUpdated
   | EventWorkspaceReady
@@ -1297,6 +1298,13 @@ export type GlobalEvent = {
           sessionID: string
           arguments: string
           messageID: string
+        }
+      }
+    | {
+        id: string
+        type: "project.paths.updated"
+        properties: {
+          projectID: string
         }
       }
     | {
@@ -3369,6 +3377,12 @@ export type ConfigV2ExperimentalPolicy = {
   resource: string
 }
 
+export type ProjectPaths = Array<string>
+
+export type ProjectCopyCopy = {
+  path: string
+}
+
 export type LocationRef = {
   directory: string
   workspaceID?: string
@@ -4405,6 +4419,14 @@ export type EventCommandExecuted = {
     sessionID: string
     arguments: string
     messageID: string
+  }
+}
+
+export type EventProjectPathsUpdated = {
+  id: string
+  type: "project.paths.updated"
+  properties: {
+    projectID: string
   }
 }
 
@@ -6256,6 +6278,137 @@ export type ProjectUpdateResponses = {
 }
 
 export type ProjectUpdateResponse = ProjectUpdateResponses[keyof ProjectUpdateResponses]
+
+export type ProjectPathsData = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project/{projectID}/paths"
+}
+
+export type ProjectPathsErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type ProjectPathsError = ProjectPathsErrors[keyof ProjectPathsErrors]
+
+export type ProjectPathsResponses = {
+  /**
+   * Project paths
+   */
+  200: ProjectPaths
+}
+
+export type ProjectPathsResponse = ProjectPathsResponses[keyof ProjectPathsResponses]
+
+export type ExperimentalProjectCopyRemoveData = {
+  body?: {
+    path: string
+  }
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/experimental/project/{projectID}/copy"
+}
+
+export type ExperimentalProjectCopyRemoveErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type ExperimentalProjectCopyRemoveError =
+  ExperimentalProjectCopyRemoveErrors[keyof ExperimentalProjectCopyRemoveErrors]
+
+export type ExperimentalProjectCopyRemoveResponses = {
+  /**
+   * Project copy removed
+   */
+  204: void
+}
+
+export type ExperimentalProjectCopyRemoveResponse =
+  ExperimentalProjectCopyRemoveResponses[keyof ExperimentalProjectCopyRemoveResponses]
+
+export type ExperimentalProjectCopyCreateData = {
+  body?: {
+    strategy: "git_worktree"
+    path: string
+  }
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/experimental/project/{projectID}/copy"
+}
+
+export type ExperimentalProjectCopyCreateErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type ExperimentalProjectCopyCreateError =
+  ExperimentalProjectCopyCreateErrors[keyof ExperimentalProjectCopyCreateErrors]
+
+export type ExperimentalProjectCopyCreateResponses = {
+  /**
+   * Project copy created
+   */
+  200: ProjectCopyCopy
+}
+
+export type ExperimentalProjectCopyCreateResponse =
+  ExperimentalProjectCopyCreateResponses[keyof ExperimentalProjectCopyCreateResponses]
+
+export type ExperimentalProjectCopyRefreshData = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/experimental/project/{projectID}/copy/refresh"
+}
+
+export type ExperimentalProjectCopyRefreshErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type ExperimentalProjectCopyRefreshError =
+  ExperimentalProjectCopyRefreshErrors[keyof ExperimentalProjectCopyRefreshErrors]
+
+export type ExperimentalProjectCopyRefreshResponses = {
+  /**
+   * Project copies refreshed
+   */
+  204: void
+}
+
+export type ExperimentalProjectCopyRefreshResponse =
+  ExperimentalProjectCopyRefreshResponses[keyof ExperimentalProjectCopyRefreshResponses]
 
 export type PtyShellsData = {
   body?: never

@@ -62,6 +62,17 @@ export const ProjectApi = HttpApi.make("project")
             description: "Update project properties such as name, icon, and commands.",
           }),
         ),
+        HttpApiEndpoint.get("paths", `${root}/:projectID/paths`, {
+          params: { projectID: ProjectV2.ID },
+          query: WorkspaceRoutingQuery,
+          success: described(ProjectV2.Paths, "Project paths"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "project.paths",
+            summary: "List project paths",
+            description: "List known local absolute paths for a project.",
+          }),
+        ),
       )
       .annotateMerge(
         OpenApi.annotations({

@@ -10,6 +10,7 @@ import { markInstanceForReload } from "../lifecycle"
 export const projectHandlers = HttpApiBuilder.group(InstanceHttpApi, "project", (handlers) =>
   Effect.gen(function* () {
     const svc = yield* Project.Service
+    const project = yield* ProjectV2.Service
 
     const list = Effect.fn("ProjectHttpApi.list")(function* () {
       return yield* svc.list()
@@ -48,6 +49,15 @@ export const projectHandlers = HttpApiBuilder.group(InstanceHttpApi, "project", 
       )
     })
 
-    return handlers.handle("list", list).handle("current", current).handle("initGit", initGit).handle("update", update)
+    const paths = Effect.fn("ProjectHttpApi.paths")((ctx: { params: { projectID: ProjectV2.ID } }) =>
+      project.paths({ projectID: ctx.params.projectID }),
+    )
+
+    return handlers
+      .handle("list", list)
+      .handle("current", current)
+      .handle("initGit", initGit)
+      .handle("update", update)
+      .handle("paths", paths)
   }),
 )
