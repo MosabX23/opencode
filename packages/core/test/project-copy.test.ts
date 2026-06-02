@@ -65,7 +65,7 @@ function setup() {
     yield* ensureProjectPathTable
     yield* db
       .insert(ProjectTable)
-      .values({ id: projectID, worktree: root.path, sandboxes: [], time_created: 1, time_updated: 1 })
+      .values({ id: projectID, worktree: sourcePath, sandboxes: [], time_created: 1, time_updated: 1 })
       .run()
       .pipe(Effect.orDie)
     yield* db

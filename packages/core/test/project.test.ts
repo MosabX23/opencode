@@ -73,8 +73,8 @@ describe("Project paths schemas", () => {
       yield* db
         .insert(ProjectTable)
         .values([
-          { id: projectID, worktree: "/repo", sandboxes: [], time_created: 1, time_updated: 1 },
-          { id: otherID, worktree: "/other", sandboxes: [], time_created: 1, time_updated: 1 },
+          { id: projectID, worktree: AbsolutePath.make("/repo"), sandboxes: [], time_created: 1, time_updated: 1 },
+          { id: otherID, worktree: AbsolutePath.make("/other"), sandboxes: [], time_created: 1, time_updated: 1 },
         ])
         .run()
         .pipe(Effect.orDie)
