@@ -44,6 +44,19 @@ describe("Project path persistence", () => {
     }),
   )
 
+  it.live("stores a repeatedly opened checkout path only once", () =>
+    Effect.gen(function* () {
+      const tmp = yield* tmpdirScoped({ git: true })
+      const project = yield* Project.Service
+
+      const result = yield* project.fromDirectory(tmp)
+      const next = yield* project.fromDirectory(tmp)
+
+      expect(next.project.id).toBe(result.project.id)
+      expect(yield* paths(result.project.id)).toEqual([{ path: tmp, type: "main" }])
+    }),
+  )
+
   it.live("stores an opened linked worktree path", () =>
     Effect.gen(function* () {
       const tmp = yield* tmpdirScoped({ git: true })
