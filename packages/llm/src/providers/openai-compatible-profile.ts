@@ -6,6 +6,7 @@ export interface OpenAICompatibleProfile {
 export const profiles = {
   baseten: { provider: "baseten", baseURL: "https://inference.baseten.co/v1" },
   cerebras: { provider: "cerebras", baseURL: "https://api.cerebras.ai/v1" },
+  commandcode: { provider: "commandcode", baseURL: "https://api.commandcode.ai/provider/v1" },
   deepinfra: { provider: "deepinfra", baseURL: "https://api.deepinfra.com/v1/openai" },
   deepseek: { provider: "deepseek", baseURL: "https://api.deepseek.com/v1" },
   fireworks: { provider: "fireworks", baseURL: "https://api.fireworks.ai/inference/v1" },

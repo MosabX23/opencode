@@ -29,6 +29,7 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelStatus } from "./model-status"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { ProviderError } from "./error"
+import { readCommandCodeAuth, commandCodeFetch } from "./command-code"
 
 const log = Log.create({ service: "provider" })
 const OPENAI_HEADER_TIMEOUT_DEFAULT = 10_000
@@ -87,6 +88,80 @@ function timeoutController(ms: number) {
   return {
     signal: ctl.signal,
     clear: () => clearTimeout(id),
+  }
+}
+
+function ccModel(
+  modelID: string,
+  name: string,
+  family: string,
+  context: number,
+  output: number,
+  free: boolean,
+  image: boolean,
+  interleaved: boolean | { field: "reasoning_content" | "reasoning_details" } = false,
+): Model {
+  return {
+    id: ProviderV2.ModelID.make(modelID),
+    providerID: ProviderV2.ID.make("commandcode"),
+    api: { id: modelID, url: "https://api.commandcode.ai/provider/v1", npm: "@ai-sdk/openai-compatible" },
+    name,
+    family,
+    capabilities: {
+      temperature: true,
+      reasoning: free,
+      attachment: true,
+      toolcall: true,
+      input: { text: true, audio: false, image, video: false, pdf: false },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved,
+    },
+    cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+    limit: { context, output },
+    status: free ? "active" : "beta",
+    options: {},
+    headers: {},
+    release_date: "",
+    variants: {},
+  }
+}
+
+const COMMAND_CODE_MODELS: Record<string, Model> = {
+  "deepseek/deepseek-v4-flash": ccModel("deepseek/deepseek-v4-flash", "DeepSeek V4 Flash", "DeepSeek", 65536, 8192, true, false, { field: "reasoning_content" }),
+  "deepseek/deepseek-v4-pro": ccModel("deepseek/deepseek-v4-pro", "DeepSeek V4 Pro", "DeepSeek", 1_000_000, 8192, true, false, { field: "reasoning_content" }),
+  "Qwen/Qwen3.7-Max-Free": ccModel("Qwen/Qwen3.7-Max-Free", "Qwen 3.7 Max", "Qwen", 65536, 8192, true, true),
+  "Qwen/Qwen3.6-Max-Preview": ccModel("Qwen/Qwen3.6-Max-Preview", "Qwen 3.6 Max Preview", "Qwen", 65536, 8192, false, true),
+  "Qwen/Qwen3.6-Plus": ccModel("Qwen/Qwen3.6-Plus", "Qwen 3.6 Plus", "Qwen", 65536, 8192, false, true),
+  "Qwen/Qwen3.7-Plus": ccModel("Qwen/Qwen3.7-Plus", "Qwen 3.7 Plus", "Qwen", 65536, 8192, false, true),
+  "claude-sonnet-4-6": ccModel("claude-sonnet-4-6", "Claude Sonnet 4.6", "Anthropic", 1_000_000, 8192, false, true),
+  "claude-opus-4-8": ccModel("claude-opus-4-8", "Claude Opus 4.8", "Anthropic", 1_000_000, 8192, false, true),
+  "claude-haiku-4-5": ccModel("claude-haiku-4-5", "Claude Haiku 4.5", "Anthropic", 1_000_000, 8192, false, true),
+  "gpt-5.5": ccModel("gpt-5.5", "GPT-5.5", "OpenAI", 65536, 8192, false, true),
+  "gpt-5.4": ccModel("gpt-5.4", "GPT-5.4", "OpenAI", 65536, 8192, false, true),
+  "gemini-3.5-flash": ccModel("gemini-3.5-flash", "Gemini 3.5 Flash", "Google", 65536, 8192, false, true),
+  "gemini-3.1-flash-lite": ccModel("gemini-3.1-flash-lite", "Gemini 3.1 Flash Lite", "Google", 65536, 8192, false, true),
+  "kimi/kimi-k2.6": ccModel("kimi/kimi-k2.6", "Kimi K2.6", "Kimi", 65536, 8192, false, true),
+  "kimi/kimi-k2.5": ccModel("kimi/kimi-k2.5", "Kimi K2.5", "Kimi", 65536, 8192, false, true),
+  "z-ai/glm-5.1": ccModel("z-ai/glm-5.1", "GLM-5.1", "GLM", 65536, 8192, false, false),
+  "z-ai/glm-5": ccModel("z-ai/glm-5", "GLM-5", "GLM", 65536, 8192, false, false),
+  "minimax/m3": ccModel("minimax/m3", "MiniMax M3", "MiniMax", 65536, 8192, false, true),
+  "minimax/m2.7": ccModel("minimax/m2.7", "MiniMax M2.7", "MiniMax", 65536, 8192, false, true),
+  "minimax/m2.5": ccModel("minimax/m2.5", "MiniMax M2.5", "MiniMax", 65536, 8192, false, true),
+  "mimo/v2.5-pro": ccModel("mimo/v2.5-pro", "MiMo V2.5 Pro", "MiMo", 65536, 8192, false, true),
+  "mimo/v2.5": ccModel("mimo/v2.5", "MiMo V2.5", "MiMo", 65536, 8192, false, true),
+  "step-3.7-flash": ccModel("step-3.7-flash", "Step 3.7 Flash", "Step", 65536, 8192, false, true),
+  "step-3.5-flash": ccModel("step-3.5-flash", "Step 3.5 Flash", "Step", 65536, 8192, false, true),
+}
+
+function injectCommandCodeProvider(database: Record<string, Info>) {
+  const commandCodeProviderID = ProviderV2.ID.make("commandcode")
+  database[commandCodeProviderID] = {
+    id: commandCodeProviderID,
+    name: "Command Code",
+    source: "custom",
+    env: ["COMMAND_CODE_API_KEY"],
+    options: {},
+    models: { ...COMMAND_CODE_MODELS },
   }
 }
 
@@ -838,6 +913,29 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
           },
         },
       }),
+    commandcode: Effect.fnUntraced(function* (input: Info) {
+      const env = yield* dep.env()
+      const cfgKey = input.options?.apiKey as string | undefined
+      const envKey = env["COMMAND_CODE_API_KEY"]
+      const authKey = readCommandCodeAuth()
+      const apiKey = cfgKey ?? envKey ?? authKey
+
+      let fetchImpl: typeof fetch | undefined
+      if (apiKey) {
+        fetchImpl = (input, init) => commandCodeFetch(fetch, input, init)
+      }
+
+      return {
+        autoload: !!apiKey,
+        options: {
+          ...(apiKey ? { apiKey } : {}),
+          ...(fetchImpl ? { fetch: fetchImpl } : {}),
+        },
+        async getModel(sdk: any, modelID: string) {
+          return sdk.chat(modelID)
+        },
+      }
+    }),
   }
 }
 
@@ -1199,6 +1297,8 @@ export const layer = Layer.effect(
         const modelsDev = yield* modelsDevSvc.get()
         const catalog = mapValues(modelsDev, fromModelsDevProvider)
         const database = mapValues(catalog, toPublicInfo)
+
+        injectCommandCodeProvider(database)
 
         const providers: Record<ProviderV2.ID, Info> = {} as Record<ProviderV2.ID, Info>
         const languages = new Map<string, LanguageModelV3>()
